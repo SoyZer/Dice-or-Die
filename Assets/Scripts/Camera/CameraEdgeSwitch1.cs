@@ -6,7 +6,6 @@ public class CameraEdgeSwitch : MonoBehaviour
     public Transform cameraViewShop;
     public Transform cameraViewTable;
     public Transform cameraViewCasino;
-    public Transform cameraViewBottom;
 
     public float edgeSize = 10f;
     public float moveSpeed = 5f;
