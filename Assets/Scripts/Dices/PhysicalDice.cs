@@ -1,0 +1,219 @@
+using UnityEngine;
+using System;
+using System.Collections.Generic;
+
+[RequireComponent(typeof(Rigidbody))]
+public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
+{
+    public static event Action<PhysicalDice, int> OnDiceStopped;
+
+    [Header("Configuración Física")]
+    [SerializeField] private float stopThreshold = 0.05f;
+    [SerializeField] private float grabHeight = 10f;
+    [SerializeField] private float grabSpeed = 25f;
+    [SerializeField] private float maxHorizontalVelocity = 1f;
+
+    [Header("Mecánica de Agitación (Shake)")]
+    [SerializeField] private float shakeRequirement = 0.5f; // Cuántos segundos acumulados de agitación frenética hacen falta
+    [SerializeField] private float shakeThreshold = 15f;    // Umbral de velocidad del ratón para que cuente como "agitación frenética"
+    [SerializeField] private float energyDecay = 2f;        // Qué tan rápido pierde la energía si dejas de agitarlo
+
+    private Rigidbody rb;
+    private bool isGrabbed = false;
+    private bool hasRolled = false;
+    private List<IModifier> activeModifiers = new List<IModifier>();
+
+    // Variables de movimiento y cálculo
+    private Vector3 targetWorldPosition;
+    private Vector3 lastPosition;
+    private Vector3 customThrowVelocity;
+
+    // Variables del sistema de agitación
+    private float currentShakeEnergy = 0f;
+    private bool isFullyCharged = false;
+
+    private Outline outlineComponent;
+
+    private void Awake()
+    {
+
+        rb = GetComponent<Rigidbody>();
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+
+        // Buscamos el componente de Outline en el dado (o en sus hijos si el modelo 3D está dentro)
+        outlineComponent = GetComponentInChildren<Outline>();
+        if (outlineComponent != null)
+        {
+            outlineComponent.enabled = false; // Empezamos apagado
+            outlineComponent.OutlineWidth = 5f; // Grosor del contorno
+            outlineComponent.OutlineColor = Color.white; // Color inicial
+        }
+    }
+
+    private void Update()
+    {
+        if (isGrabbed)
+        {
+            CalculateTargetPosition();
+        }
+        else if (hasRolled && rb.linearVelocity.magnitude < stopThreshold && rb.angularVelocity.magnitude < stopThreshold)
+        {
+            hasRolled = false;
+            int finalResult = GetResult();
+            OnDiceStopped?.Invoke(this, finalResult);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (isGrabbed)
+        {
+            // 1. Mover el dado con físicas hacia el cursor
+            Vector3 direction = targetWorldPosition - transform.position;
+            rb.linearVelocity = direction * grabSpeed;
+
+            // 2. Calcular la velocidad real del arrastre frame a frame
+            customThrowVelocity = (transform.position - lastPosition) / Time.fixedDeltaTime;
+            lastPosition = transform.position;
+
+            // 3. PROCESAR AGITACIÓN
+            float movementSpeedThisFrame = customThrowVelocity.magnitude;
+
+            if (movementSpeedThisFrame > shakeThreshold)
+            {
+                currentShakeEnergy += Time.fixedDeltaTime;
+            }
+            else
+            {
+                currentShakeEnergy -= Time.fixedDeltaTime * energyDecay;
+            }
+
+            currentShakeEnergy = Mathf.Clamp(currentShakeEnergy, 0f, shakeRequirement);
+
+            // 4. NUEVO: HACER QUE GIRE AL AGITARLO
+            if (currentShakeEnergy > 0)
+            {
+                // Calculamos un porcentaje de 0 a 1 de cuánto se ha cargado el dado
+                float chargePercent = currentShakeEnergy / shakeRequirement;
+
+                // Definimos una velocidad de rotación máxima (ej. 30). Puedes subir este número si quieres que gire más rápido.
+                float currentSpinSpeed = chargePercent * 10f;
+
+                // Hacemos que gire en diagonal para que se vea caótico en todas las direcciones
+                rb.angularVelocity = new Vector3(1f, 1.5f, 0.5f).normalized * currentSpinSpeed;
+            }
+            else
+            {
+                // Si está totalmente quieto en la mano, no gira
+                rb.angularVelocity = Vector3.zero;
+            }
+
+            // Comprobamos si ya está cargado al 100%
+            if (currentShakeEnergy >= shakeRequirement && !isFullyCharged)
+            {
+                isFullyCharged = true;
+                TriggerChargeFeedback();
+            }
+        }
+    }
+
+    // --- IMPLEMENTACIÓN DE IGRABBABLE ---
+
+    // --- IMPLEMENTACIÓN DE IGRABBABLE ---
+
+    public void Grab()
+    {
+        isGrabbed = true;
+        hasRolled = false;
+        isFullyCharged = false;
+        currentShakeEnergy = 0f;
+
+        rb.isKinematic = false;
+        rb.useGravity = false;
+
+        CalculateTargetPosition();
+        transform.position = new Vector3(transform.position.x, grabHeight, transform.position.z);
+        lastPosition = transform.position;
+
+        // AL AGARRAR: Cambia a contorno BLANCO (mantenemos grosor 3 o el que quieras)
+        SetHighlight(true, Color.white, 3f);
+    }
+
+    public void Release(Vector3 mouseDirectionIgnored)
+    {
+        isGrabbed = false;
+        rb.useGravity = true;
+        hasRolled = true;
+
+        SetHighlight(false);
+
+        if (isFullyCharged)
+        {
+            // 1. Separamos la velocidad vertical (Y) de la horizontal (X, Z)
+            Vector3 horizontalVelocity = new Vector3(customThrowVelocity.x, 0f, customThrowVelocity.z);
+            float verticalVelocity = customThrowVelocity.y;
+
+            // 2. LIMITAMOS LA FUERZA HORIZONTAL: Si supera el máximo, la recortamos manteniendo la dirección
+            if (horizontalVelocity.magnitude > maxHorizontalVelocity)
+            {
+                horizontalVelocity = horizontalVelocity.normalized * maxHorizontalVelocity;
+            }
+
+            // 3. Recomponemos el vector de fuerza final
+            Vector3 finalLaunchForce = horizontalVelocity;
+            // Nos aseguramos de que siempre tenga un impulso hacia arriba agradable (parábola)
+            finalLaunchForce.y = Mathf.Max(verticalVelocity, 4f);
+
+            // Torque caótico por estar cargado
+            Vector3 randomTorque = new Vector3(UnityEngine.Random.Range(-30, 30), UnityEngine.Random.Range(-30, 30), UnityEngine.Random.Range(-30, 30));
+
+            Roll(finalLaunchForce, randomTorque);
+        }
+        else
+        {
+            // Si no se agitó, se cae flojo
+            rb.linearVelocity = Vector3.down * 2f;
+            rb.angularVelocity = new Vector3(UnityEngine.Random.Range(-2, 2), UnityEngine.Random.Range(-2, 2), UnityEngine.Random.Range(-2, 2));
+        }
+    }
+
+    // Método de la interfaz modificado para aceptar parámetros dinámicos
+    public void SetHighlight(bool active, Color color = default, float width = 5f)
+    {
+        if (outlineComponent != null)
+        {
+            // Si el color es el por defecto (transparente), usamos negro por seguridad
+            if (color == default) color = Color.black;
+
+            outlineComponent.enabled = active;
+            outlineComponent.OutlineColor = color;
+            outlineComponent.OutlineWidth = width;
+        }
+    }
+
+    private void CalculateTargetPosition()
+    {
+        Plane horizonPlane = new Plane(Vector3.up, new Vector3(0, grabHeight, 0));
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+        if (horizonPlane.Raycast(ray, out float distance))
+        {
+            targetWorldPosition = ray.GetPoint(distance);
+        }
+    }
+
+    private void TriggerChargeFeedback()
+    {
+        Debug.Log("¡DADO CARGADO!");
+    }
+
+    public void Roll(Vector3 force, Vector3 torque)
+    {
+        rb.AddForce(force, ForceMode.VelocityChange);
+        rb.AddTorque(torque, ForceMode.Impulse);
+    }
+
+    public int GetResult() => UnityEngine.Random.Range(1, 5);
+    public void ApplyModifier(IModifier modifier) { }
+    public void RemoveModifier(IModifier modifier) { }
+}
