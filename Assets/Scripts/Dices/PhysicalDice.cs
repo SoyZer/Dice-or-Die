@@ -12,11 +12,16 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     [SerializeField] private float grabHeight = 10f;
     [SerializeField] private float grabSpeed = 25f;
     [SerializeField] private float maxHorizontalVelocity = 1f;
+    [SerializeField] private float rollSafetyDuration = 0.3f;
 
     [Header("Mecánica de Agitación (Shake)")]
     [SerializeField] private float shakeRequirement = 0.5f; // Cuántos segundos acumulados de agitación frenética hacen falta
     [SerializeField] private float shakeThreshold = 15f;    // Umbral de velocidad del ratón para que cuente como "agitación frenética"
     [SerializeField] private float energyDecay = 2f;        // Qué tan rápido pierde la energía si dejas de agitarlo
+
+    [Header("Corrección de Posición de Emergencia")]
+    [SerializeField] private float antiStuckJumpForce = 5f; // Fuerza del pequeño salto si se queda de canto
+    [SerializeField] private float antiStuckTorqueForce = 10f;
 
     private Rigidbody rb;
     private bool isGrabbed = false;
@@ -33,6 +38,11 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     private bool isFullyCharged = false;
 
     private Outline outlineComponent;
+    protected DiceFace faceOnGround;
+
+    // NUEVO: Temporizador para la capa de seguridad
+    private float rollSafetyTimer = 0f;
+    protected bool hasTriggeredAbilityThisTurn = false; // Mantenemos el control antibucle para el RewardSystem
 
     private void Awake()
     {
@@ -56,11 +66,38 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
         {
             CalculateTargetPosition();
         }
-        else if (hasRolled && rb.linearVelocity.magnitude < stopThreshold && rb.angularVelocity.magnitude < stopThreshold)
+        else if (hasRolled)
         {
-            hasRolled = false;
-            int finalResult = GetResult();
-            OnDiceStopped?.Invoke(this, finalResult);
+            // NUEVO: Reducimos el temporizador de seguridad
+            if (rollSafetyTimer > 0f)
+            {
+                rollSafetyTimer -= Time.deltaTime;
+                return; // Mientras el temporizador esté activo, IGNORAMOS por completo la comprobación de frenado
+            }
+
+            if (rb.linearVelocity.magnitude < stopThreshold && rb.angularVelocity.magnitude < stopThreshold)
+            {
+                // 1. Comprobamos si el resultado es válido
+                int finalResult = GetFinalResult();
+
+                if (finalResult == -99)
+                {
+                    // ¡ALERTA! El dado se ha parado pero está de canto o bugeado fuera de la mesa
+                    Debug.LogWarning($"[Dice] {gameObject.name} se ha quedado de canto o sin cara válida. ¡Pegando salto de reajuste!");
+
+                    // Aplicamos el microsalto de emergencia utilizando el método Roll para reactivar el escudo de seguridad
+                    Vector3 jumpVector = new Vector3(UnityEngine.Random.Range(-1f, 1f), antiStuckJumpForce, UnityEngine.Random.Range(-1f, 1f));
+                    Vector3 torqueVector = new Vector3(UnityEngine.Random.Range(-antiStuckTorqueForce, antiStuckTorqueForce), UnityEngine.Random.Range(-antiStuckTorqueForce, antiStuckTorqueForce), UnityEngine.Random.Range(-antiStuckTorqueForce, antiStuckTorqueForce));
+
+                    Roll(jumpVector, torqueVector);
+                }
+                else
+                {
+                    // El dado es válido y ha caído sobre una cara limpia
+                    hasRolled = false;
+                    OnDiceStopped?.Invoke(this, finalResult);
+                }
+            }
         }
     }
 
@@ -118,11 +155,14 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     }
 
     // --- IMPLEMENTACIÓN DE IGRABBABLE ---
-
-    // --- IMPLEMENTACIÓN DE IGRABBABLE ---
-
     public void Grab()
     {
+        if (hasRolled)
+        {
+            Debug.Log($"[Dice] No puedes agarrar {gameObject.name} hasta que se detenga.");
+            return;
+        }
+
         isGrabbed = true;
         hasRolled = false;
         isFullyCharged = false;
@@ -143,7 +183,6 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     {
         isGrabbed = false;
         rb.useGravity = true;
-        hasRolled = true;
 
         SetHighlight(false);
 
@@ -174,7 +213,52 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
             // Si no se agitó, se cae flojo
             rb.linearVelocity = Vector3.down * 2f;
             rb.angularVelocity = new Vector3(UnityEngine.Random.Range(-2, 2), UnityEngine.Random.Range(-2, 2), UnityEngine.Random.Range(-2, 2));
+            rollSafetyTimer = rollSafetyDuration;
         }
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        if (other.CompareTag("Table"))
+        {
+            // Buscamos en TODOS los componentes DiceFace que hay en los hijos del dado
+            DiceFace[] todasLasCaras = GetComponentsInChildren<DiceFace>();
+
+            foreach (DiceFace cara in todasLasCaras)
+            {
+                // Usamos la propiedad del Collider para ver cuál de nuestras caras está intersectando la mesa
+                Collider colliderCara = cara.GetComponent<Collider>();
+                if (colliderCara != null && colliderCara.bounds.Intersects(other.bounds))
+                {
+                    faceOnGround = cara;
+                    // Debug.Log($"[Dice] Detectada cara boca abajo: {faceOnGround.GetFaceValue()}");
+                    break;
+                }
+            }
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Table"))
+        {
+            faceOnGround = null;
+        }
+    }
+
+    public int GetFinalResult()
+    {
+        if (faceOnGround != null)
+        {
+            for (int i = activeModifiers.Count - 1; i >= 0; i--)
+            {
+                activeModifiers[i].OnRoll(this);
+            }
+            return faceOnGround.GetFaceValue();
+        }
+
+        // Caso de emergencia: si se quedó de canto o flotando, devolvemos un valor seguro
+        return -99;
     }
 
     // Método de la interfaz modificado para aceptar parámetros dinámicos
@@ -209,11 +293,50 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
 
     public void Roll(Vector3 force, Vector3 torque)
     {
+        hasRolled = true;
+        rollSafetyTimer = rollSafetyDuration;
+
         rb.AddForce(force, ForceMode.VelocityChange);
         rb.AddTorque(torque, ForceMode.Impulse);
     }
 
+    // Añade esto en tu PhysicalDice.cs (y borra el IsBurnt si quieres limpiar el código)
+    public List<IModifier> GetActiveModifiers()
+    {
+        return activeModifiers;
+    }
+
     public int GetResult() => UnityEngine.Random.Range(1, 5);
-    public void ApplyModifier(IModifier modifier) { }
-    public void RemoveModifier(IModifier modifier) { }
+    // Reemplaza estos métodos en tu PhysicalDice.cs:
+
+    public void ApplyModifier(IModifier modifier)
+    {
+        // Buscamos si ya existe UN modificador con el mismo nombre en la lista
+        IModifier existente = activeModifiers.Find(m => m.NameKey == modifier.NameKey);
+
+        if (existente != null)
+        {
+            // Si ya existe (ej: ya estaba en llamas), le volvemos a aplicar el efecto 
+            // para que refresque el tiempo o aumente la intensidad del fuego
+            existente.OnApply(this);
+        }
+        else
+        {
+            // Si es un efecto nuevo, lo añadimos y lo activamos
+            activeModifiers.Add(modifier);
+            modifier.OnApply(this);
+        }
+    }
+
+    public void RemoveModifier(IModifier modifier)
+    {
+        // Buscamos por nombre exacto para asegurarnos de borrarlo de la lista
+        IModifier aEliminar = activeModifiers.Find(m => m.NameKey == modifier.NameKey);
+
+        if (aEliminar != null)
+        {
+            activeModifiers.Remove(aEliminar);
+            Debug.Log($"[Dice] Modificador '{modifier.NameKey}' eliminado con éxito de {gameObject.name}.");
+        }
+    }
 }

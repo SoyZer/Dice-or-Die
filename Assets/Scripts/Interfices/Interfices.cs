@@ -20,5 +20,11 @@ public interface IEffectable
 
 public interface IModifier
 {
-    string ModifierName { get; }
+    string NameKey { get; }
+    void OnApply(PhysicalDice dice);
+    void OnUpdate(PhysicalDice dice);
+    void OnRemove(PhysicalDice dice);
+
+    int ModifyReward(int currentReward);
+    void OnRoll(PhysicalDice dice);
 }

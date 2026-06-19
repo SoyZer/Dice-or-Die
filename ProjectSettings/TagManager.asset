@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Dice
+  - Table
   layers:
   - Default
   - TransparentFX
