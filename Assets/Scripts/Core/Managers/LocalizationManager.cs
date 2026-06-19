@@ -35,7 +35,7 @@ public class LocalizationManager : MonoBehaviour
         activeTranslations.Clear();
 
         // Buscamos el archivo "localization.csv" en Assets/Resources/Localization/
-        TextAsset csvFile = Resources.Load<TextAsset>("Localization/localization");
+        TextAsset csvFile = Resources.Load<TextAsset>("Localization/DiceorDie_Lenguages");
 
         if (csvFile == null)
         {
@@ -49,7 +49,7 @@ public class LocalizationManager : MonoBehaviour
         if (lineas.Length <= 1) return; // Archivo vacío o solo tiene la cabecera
 
         // Detectamos en qué columna está nuestro idioma basándonos en la primera línea (cabecera)
-        string[] cabecera = lineas[0].Split(';');
+        string[] cabecera = lineas[0].Split(',');
         int columnaIdiomaObjetivo = -1;
 
         string idiomaBuscado = currentLanguage.ToString(); // "Spanish" o "English"
@@ -71,7 +71,7 @@ public class LocalizationManager : MonoBehaviour
         // Recorremos el resto de filas (empezando en la 1 para saltar la cabecera)
         for (int i = 1; i < lineas.Length; i++)
         {
-            string[] celdas = lineas[i].Split(';');
+            string[] celdas = lineas[i].Split(',');
 
             if (celdas.Length > columnaIdiomaObjetivo)
             {

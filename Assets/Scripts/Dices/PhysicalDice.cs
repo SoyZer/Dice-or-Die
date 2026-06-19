@@ -155,7 +155,7 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     }
 
     // --- IMPLEMENTACIÓN DE IGRABBABLE ---
-    public void Grab()
+    public virtual void Grab()
     {
         if (hasRolled)
         {
@@ -291,7 +291,7 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
         Debug.Log("¡DADO CARGADO!");
     }
 
-    public void Roll(Vector3 force, Vector3 torque)
+    public virtual void Roll(Vector3 force, Vector3 torque)
     {
         hasRolled = true;
         rollSafetyTimer = rollSafetyDuration;
