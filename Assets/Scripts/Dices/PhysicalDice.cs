@@ -24,8 +24,8 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     [SerializeField] private float antiStuckTorqueForce = 10f;
 
     private Rigidbody rb;
-    private bool isGrabbed = false;
-    private bool hasRolled = false;
+    protected bool isGrabbed = false;
+    protected bool hasRolled = false;
     private List<IModifier> activeModifiers = new List<IModifier>();
 
     // Variables de movimiento y cálculo
@@ -68,15 +68,32 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
         }
         else if (hasRolled)
         {
-            // NUEVO: Reducimos el temporizador de seguridad
+            // Reducimos el temporizador de seguridad
             if (rollSafetyTimer > 0f)
             {
                 rollSafetyTimer -= Time.deltaTime;
                 return; // Mientras el temporizador esté activo, IGNORAMOS por completo la comprobación de frenado
             }
 
-            if (rb.linearVelocity.magnitude < stopThreshold && rb.angularVelocity.magnitude < stopThreshold)
+            // --- DETECCIÓN DE PARADA SEGÚN ESTADO DE CONGELACIÓN ---
+            bool isStopped = false;
+
+            if (HasModifier("MOD_FROZEN"))
             {
+                // Si está congelado, permitimos un margen de movimiento mucho mayor (ej: 0.8f) ya que resbala por inercia
+                // Puedes ajustar este '0.8f' si consideras que se detiene demasiado rápido o lento.
+                float iceStopThreshold = 0.8f;
+                isStopped = rb.linearVelocity.magnitude < iceStopThreshold && rb.angularVelocity.magnitude < iceStopThreshold;
+            }
+            else
+            {
+                // Comportamiento normal si no está congelado
+                isStopped = rb.linearVelocity.magnitude < stopThreshold && rb.angularVelocity.magnitude < stopThreshold;
+            }
+
+            if (isStopped)
+            {
+                hasRolled = false;
                 // 1. Comprobamos si el resultado es válido
                 int finalResult = GetFinalResult();
 
@@ -94,7 +111,6 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
                 else
                 {
                     // El dado es válido y ha caído sobre una cara limpia
-                    hasRolled = false;
                     OnDiceStopped?.Invoke(this, finalResult);
                 }
             }
@@ -250,14 +266,20 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     {
         if (faceOnGround != null)
         {
+            // OPTIMIZACIÓN ANTIBUG: Recorremos al revés (de atrás hacia adelante) 
+            // Esto permite que si un modificador se elimina a sí mismo durante el OnRoll,
+            // el bucle NO se rompa ni cree un bucle infinito en memoria.
             for (int i = activeModifiers.Count - 1; i >= 0; i--)
             {
-                activeModifiers[i].OnRoll(this);
+                if (i < activeModifiers.Count) // Doble seguro por si la lista cambia de tamaño
+                {
+                    activeModifiers[i].OnRoll(this);
+                }
             }
             return faceOnGround.GetFaceValue();
         }
 
-        // Caso de emergencia: si se quedó de canto o flotando, devolvemos un valor seguro
+        // Caso de emergencia
         return -99;
     }
 
@@ -307,22 +329,32 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     }
 
     public int GetResult() => UnityEngine.Random.Range(1, 5);
-    // Reemplaza estos métodos en tu PhysicalDice.cs:
+
+
+    public bool HasModifier(string nameKey)
+    {
+        return activeModifiers.Exists(m => m.NameKey == nameKey);
+    }
 
     public void ApplyModifier(IModifier modifier)
     {
-        // Buscamos si ya existe UN modificador con el mismo nombre en la lista
+        // BARRERA DE INMUNIDAD: Usamos la clave de localización ("MOD_FROZEN") para identificar el estado de hielo
+        if (HasModifier("MOD_FROZEN") && modifier.NameKey != "MOD_FROZEN")
+        {
+            // NOTA: Si quieres mostrar el mensaje traducido en el log:
+            // string nombreTraducido = TuSistemaDeLocalization.GetTranslation(modifier.NameKey);
+            Debug.Log($"[Inmunidad] {gameObject.name} está congelado. Ignorando modificador: {modifier.NameKey}");
+            return;
+        }
+
         IModifier existente = activeModifiers.Find(m => m.NameKey == modifier.NameKey);
 
         if (existente != null)
         {
-            // Si ya existe (ej: ya estaba en llamas), le volvemos a aplicar el efecto 
-            // para que refresque el tiempo o aumente la intensidad del fuego
             existente.OnApply(this);
         }
         else
         {
-            // Si es un efecto nuevo, lo añadimos y lo activamos
             activeModifiers.Add(modifier);
             modifier.OnApply(this);
         }
@@ -330,11 +362,11 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
 
     public void RemoveModifier(IModifier modifier)
     {
-        // Buscamos por nombre exacto para asegurarnos de borrarlo de la lista
         IModifier aEliminar = activeModifiers.Find(m => m.NameKey == modifier.NameKey);
 
         if (aEliminar != null)
         {
+            aEliminar.OnRemove(this); // IMPORTANTE: Llama al OnRemove del modificador para restaurar físicas/materiales
             activeModifiers.Remove(aEliminar);
             Debug.Log($"[Dice] Modificador '{modifier.NameKey}' eliminado con éxito de {gameObject.name}.");
         }

@@ -34,15 +34,16 @@ public class OnFireModifier : IModifier
 
     public void OnRoll(PhysicalDice dice)
     {
+        if (rollsRemaining <= 0) return; // Si ya se gastó, no seguimos restando
+
         rollsRemaining--;
         burnIntensity--;
-        // Se ejecuta justo cuando el jugador lanza el dado
-        Debug.Log($"[Modificador] {dice.gameObject.name} ha gastado una tirada de fuego. Quedan: {rollsRemaining}");
+        Debug.Log($"[Modificador] Dice ha gastado una tirada de fuego. Quedan: {rollsRemaining}");
 
-        // Si se agotan las 3 tiradas, el fuego se apaga solo
         if (rollsRemaining <= 0)
         {
-            OnRemove(dice);
+            // Quita el fuego de forma segura
+            dice.RemoveModifier(this);
         }
     }
 

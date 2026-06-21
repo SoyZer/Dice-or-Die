@@ -1,43 +1,65 @@
+using System.Collections;
 using UnityEngine;
 
 public class RewardSystem : MonoBehaviour
 {
     private void OnEnable()
     {
-        // El contable se sienta a mirar la mesa
-        PhysicalDice.OnDiceStopped += ProcessDiceResult;
+        PhysicalDice.OnDiceStopped += OnDiceStoppedHandler;
     }
 
     private void OnDisable()
     {
-        PhysicalDice.OnDiceStopped -= ProcessDiceResult;
+        PhysicalDice.OnDiceStopped -= OnDiceStoppedHandler;
     }
 
-    private void ProcessDiceResult(PhysicalDice dice, int resultIgnored)
+    // Receptor del evento: Desvía el flujo de inmediato a una Corrutina segura
+    private void OnDiceStoppedHandler(PhysicalDice dice, int result)
     {
-        // 1. LEER EL RESULTADO REAL DESDE LA CARA BOCA ABAJO
-        int realResult = dice.GetFinalResult();
+        StartCoroutine(ProcessDiceResultRoutine(dice, result));
+    }
 
-        Debug.Log($"[RewardSystem] {dice.gameObject.name} se ha detenido de forma estable. Cara en el suelo detectada. Resultado: {realResult}");
+    private IEnumerator ProcessDiceResultRoutine(PhysicalDice dice, int result)
+    {
+        // 1. ESCUDO TEMPORAL MAESTRO: Esperamos al final del frame / siguiente frame.
+        // Esto permite que el dado complete su parada física, limpie sus banderas (hasRolled = false)
+        // y termine de procesar internamente sus modificadores OnRoll una sola vez.
+        yield return null;
 
+        // Seguridad por si destruyeron el dado justo en este lapso
+        if (dice == null) yield break;
+
+        // 2. USAR EL RESULTADO YA CALCULADO
+        // ¡SÚPER IMPORTANTE! Ya no llamamos a GetFinalResult(). Usamos el 'result' que nos envía el evento.
+        // Esto evita que los modificadores como el fuego resten tiradas dobles por error.
+        int realResult = result;
+
+        Debug.Log($"[RewardSystem] Procesando de forma segura {dice.gameObject.name}. Resultado: {realResult}");
+
+        // 3. ACTIVAR HABILIDADES ESPECIALES (Como el VoltDice)
         VoltDice voltDice = dice as VoltDice;
         if (voltDice != null)
         {
-            // Le pasamos el resultado real para que el rayo salte tantas veces como dicte la cara
             voltDice.ActivateElectricChain(realResult);
         }
 
-        // 2. CALCULAR LAS GANANCIAS PASANDO POR TODOS LOS MODIFICADORES ACTIVOS
+        // 4. CALCULAR LAS GANANCIAS PASANDO POR TODOS LOS MODIFICADORES ACTIVOS
         int finalReward = realResult;
 
-        // El truco de magia: Da igual qué modificadores tenga el dado, 
-        // pasamos el dinero por el filtro de cada uno de ellos de forma automática.
-        foreach (IModifier mod in dice.GetActiveModifiers())
+        // Recorremos la lista de modificadores. Ahora es 100% seguro porque estamos en un frame limpio
+        var activeModifiers = dice.GetActiveModifiers();
+        if (activeModifiers != null)
         {
-            finalReward = mod.ModifyReward(finalReward);
+            foreach (IModifier mod in activeModifiers)
+            {
+                if (mod != null)
+                {
+                    finalReward = mod.ModifyReward(finalReward);
+                }
+            }
         }
 
-        // 3. INGRESAR EL DINERO FINAL MODIFICADO
+        // 5. INGRESAR EL DINERO FINAL MODIFICADO
         if (TableManager.Instance != null)
         {
             TableManager.Instance.AddMoney(finalReward);
