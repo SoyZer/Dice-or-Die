@@ -1888,7 +1888,7 @@ PrefabInstance:
       objectReference: {fileID: 2100000, guid: 1f0a6fc01b1e162479f0d402a2123e76, type: 2}
     - target: {fileID: 5994108650975849332, guid: 999527e681f45984eb870ab68adf5375, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -16.2
+      value: -58.6
       objectReference: {fileID: 0}
     - target: {fileID: 5994108650975849332, guid: 999527e681f45984eb870ab68adf5375, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1896,7 +1896,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5994108650975849332, guid: 999527e681f45984eb870ab68adf5375, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -1.94
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5994108650975849332, guid: 999527e681f45984eb870ab68adf5375, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1933,6 +1933,10 @@ PrefabInstance:
     - target: {fileID: 6369368209118900686, guid: 999527e681f45984eb870ab68adf5375, type: 3}
       propertyPath: m_Layer
       value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6369368209118900686, guid: 999527e681f45984eb870ab68adf5375, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6491610374357610394, guid: 999527e681f45984eb870ab68adf5375, type: 3}
       propertyPath: m_Layer
@@ -1981,9 +1985,11 @@ MonoBehaviour:
   flightDuration: 100
   moneyGenerationInterval: 0.1
   moneyPerTick: 1
-  chaosFrequency: 10
-  propulsionForce: 100
-  maxHorizontalSpeed: 200
+  moveSpeed: 25
+  minTimeBetweenQuiebros: 0.05
+  maxTimeBetweenQuiebros: 0.2
+  limitX: 8
+  limitZ: 8
   rocketTrailParticles: {fileID: 0}
 --- !u!1 &609985695 stripped
 GameObject:
@@ -4424,7 +4430,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60d62e7464b8bc14eb4e4b9959d4522d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WindDice
-  stopThreshold: 0.05
+  stopThreshold: 0.2
   grabHeight: 10
   grabSpeed: 25
   maxHorizontalVelocity: 1
@@ -6015,7 +6021,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60d62e7464b8bc14eb4e4b9959d4522d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WindDice
-  stopThreshold: 0.05
+  stopThreshold: 0.2
   grabHeight: 10
   grabSpeed: 25
   maxHorizontalVelocity: 1
@@ -6429,7 +6435,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60d62e7464b8bc14eb4e4b9959d4522d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WindDice
-  stopThreshold: 0.05
+  stopThreshold: 0.2
   grabHeight: 10
   grabSpeed: 25
   maxHorizontalVelocity: 1
