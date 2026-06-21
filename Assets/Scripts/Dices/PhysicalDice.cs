@@ -117,7 +117,7 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
         }
     }
 
-    private void FixedUpdate()
+    protected virtual void FixedUpdate()
     {
         if (isGrabbed)
         {
