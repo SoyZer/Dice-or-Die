@@ -42,6 +42,12 @@ public class RewardSystem : MonoBehaviour
         {
             voltDice.ActivateElectricChain(realResult);
         }
+        
+        GunDice gunDice = dice as GunDice;
+        if (gunDice != null)
+        {
+            gunDice.result = realResult;
+        }
 
         // 4. CALCULAR LAS GANANCIAS PASANDO POR TODOS LOS MODIFICADORES ACTIVOS
         int finalReward = realResult;

@@ -26,6 +26,7 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
     private Rigidbody rb;
     protected bool isGrabbed = false;
     protected bool hasRolled = false;
+    protected bool isStopped = false;
     private List<IModifier> activeModifiers = new List<IModifier>();
 
     // Variables de movimiento y cálculo
@@ -76,8 +77,6 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
             }
 
             // --- DETECCIÓN DE PARADA SEGÚN ESTADO DE CONGELACIÓN ---
-            bool isStopped = false;
-
             if (HasModifier("MOD_FROZEN"))
             {
                 // Si está congelado, permitimos un margen de movimiento mucho mayor (ej: 0.8f) ya que resbala por inercia
