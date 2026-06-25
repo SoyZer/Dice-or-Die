@@ -84,6 +84,7 @@ public class BounceDice : PhysicalDice
             // 2. PREMIO ALEATORIO CONFIGURABLE
             int dineroGanado = Random.Range(minMoneyPerBounce, maxMoneyPerBounce + 1);
             Debug.Log($"[DBounce] ¡Salto contra Súper Gravedad! Paga: ${dineroGanado}");
+            TableManager.Instance.AddMoney(dineroGanado);
 
             // 3. EFECTO VISUAL
             if (bounceParticles != null)

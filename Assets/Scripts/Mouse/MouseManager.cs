@@ -12,6 +12,7 @@ public class MouseManager : MonoBehaviour
     [Header("Configuración de Capas (Layers)")]
     [Tooltip("Nombre de la capa temporal para el dado agarrado (Ej: GrabbedDice)")]
     [SerializeField] private string grabbedLayerName = "GrabbedDice";
+    [SerializeField] private LayerMask diceLayerMask;
 
     private int originalDiceLayer; // Guarda la capa original del dado que agarramos
 
@@ -21,7 +22,7 @@ public class MouseManager : MonoBehaviour
         if (currentGrabbed == null)
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit))
+            if (Physics.Raycast(ray, out RaycastHit hit, 10000f, diceLayerMask))
             {
                 IGrabbable hovered = hit.collider.GetComponentInParent<IGrabbable>();
 
@@ -47,6 +48,7 @@ public class MouseManager : MonoBehaviour
         if (Input.GetMouseButtonDown(0) && lastHovered != null)
         {
             currentGrabbed = lastHovered;
+            
 
             if (currentGrabbed is Component component)
             {

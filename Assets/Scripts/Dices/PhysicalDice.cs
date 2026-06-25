@@ -327,9 +327,6 @@ public class PhysicalDice : MonoBehaviour, IDice, IGrabbable, IEffectable
         return activeModifiers;
     }
 
-    public int GetResult() => UnityEngine.Random.Range(1, 5);
-
-
     public bool HasModifier(string nameKey)
     {
         return activeModifiers.Exists(m => m.NameKey == nameKey);

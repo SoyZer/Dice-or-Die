@@ -9,7 +9,6 @@ public interface IGrabbable
 public interface IDice
 {
     void Roll(UnityEngine.Vector3 force, UnityEngine.Vector3 torque);
-    int GetResult();
 }
 
 public interface IEffectable

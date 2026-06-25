@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aef07d1551e77b440937bf3e973a36bb, type: 3}
+  m_Name: DBounce
+  m_EditorClassIdentifier: Assembly-CSharp::DiceData
+  diceName: DBounce
+  price: 25
+  dicePrefab: {fileID: 2552901622193846674, guid: 3ef37be6c0a63c04cbcbaa9c1930d16d, type: 3}
