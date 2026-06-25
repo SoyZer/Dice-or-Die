@@ -1,18 +1,35 @@
-Key,Spanish,English
-DICES,,
-DICE_BASE_4_NAME,D4,D4
-DICE_BASE_6_NAME,D6,D6
-DICE_BASE_8_NAME,D8,D8
-DICE_BASE_10_NAME,D10,D10
-DICE_BASE_12_NAME,D12,D12
-DICE_BASE_20_NAME,D20,D20
-DICE_VOLT_NAME,DVolt,DVolt
-DICE_FLAME_NAME,Dado √çgneo,DFlame
-,,
-,,
-,,
-MODS,Modificadores,Modifayers
-MOD_ON_FIRE_NAME,En llamas,On Fire
-MOD_BURNT_NAME,Calcinado,Burnt
-MOD_CRISTAL_NAME,Cristal,Crystal
-MOD_CORRUPT_NAME,Corrupto,Corrupt
+Key;Spanish;English;
+DICES;;;
+DICE_BASE_4_NAME;D4;D4;
+DICE_BASE_6_NAME;D6;D6;
+DICE_BASE_8_NAME;D8;D8;
+DICE_BASE_10_NAME;D10;D10;
+DICE_BASE_12_NAME;D12;D12;
+DICE_BASE_20_NAME;D20;D20;
+DICE_VOLT_NAME;DVolt;DVolt;
+DICE_FLAME_NAME;Dado Õgneo;DFlame;
+;;;
+;;;
+;;;
+MODS;Modificadores;Modifayers;
+MOD_ON_FIRE_NAME;En llamas;On Fire;
+MOD_BURNT_NAME;Calcinado;Burnt;
+MOD_CRISTAL_NAME;Cristal;Crystal;
+MOD_CORRUPT_NAME;Corrupto;Corrupt;
+;;;
+;;;
+;;;
+CHAR;;;
+CHAR_CRUPIER;CROUPIER;CRUPIER;
+CHAR_PLAYER;X;X;
+;;;
+;;;
+DIALOGUES;;;
+TEST_DIALOGUE_1;Hola JUGADOR, conque has venido a JUGAR...;"Hello, PLAYERóso you've come to PLAY...
+";
+TEST_DIALOGUE_2;Ya veo...;I see...;
+TEST_DIALOGUE_3;Pues JUGEMOS.;Well then, let's PLAY.;
+;;;
+;;;
+;;;
+;;;
